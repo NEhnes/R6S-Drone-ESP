@@ -1,0 +1,100 @@
+<!--
+Nathan Ehnes
+2024-25 Sem 2 Creative Eng Project
+
+FYI** I myseld did not write all of the code in this file. 
+
+I learned the very basics of HTML, CSS and JS so that I could do the majority of this document.
+
+Web development skills were not within the scope of my project and learning.
+Opening a websocket and creating event listeners was beyond my abilities, so these elements are "inspired"
+by git repos/examples
+
+I understand what everything does but not the syntax intricaties of certain things
+-->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ESP32 Motor Control</title>
+    <!-- pre-existing joystick library pulled from web by client -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.0/nipplejs.min.js"></script>
+    <style>
+        /*style joystick div*/
+        #joystick {
+            width: 100px;
+            height: 100px;
+            position: fixed;
+            left: 40px;
+            top: '50%';
+            transform: translateY(-50%);
+            border: 3px slateblue;
+        }
+        /* camera stream div */
+        #stream {
+            width: 640px;
+            height: 480px;
+            margin: 20px auto;
+            display: block;
+        }
+    </style>
+</head>
+<body style="text-align:center; font-family:Arial, sans-serif;">
+    <h1 style="color:blue;">ESP32 Motor Control</h1>
+    <p style="font-style: italic; text-shadow: 2px 2px 5px gray">Welcome to the ESP32 motor control interface!</p>
+
+    <!-- img element for camera feed -->
+    <img id="stream" src="">
+    
+    <div id="joystick"></div>
+    
+    <script>
+        // connect to WebSocket
+        const socket = new WebSocket('ws://' + window.location.hostname + '/ws');
+        socket.binaryType = 'arraybuffer';
+
+        // when connected
+        socket.onopen = () => {
+            console.log('WebSocket connected!');
+        };
+
+        // accept data from esp
+        socket.onmessage = (event) => {
+            if (typeof event.data === 'string') {
+                // TEXT messages - not used
+                console.log('ESP32 says:', event.data);
+            } else {
+                // IMAGES
+                const img = document.getElementById('stream');
+                const blob = new Blob([event.data], { type: 'image/jpeg' });
+                img.src = URL.createObjectURL(blob);
+            }
+        };
+
+        // create and configure the nipple.js joystick
+        const joystick = nipplejs.create({
+            zone: document.getElementById('joystick'), // attach joystick to the #joystick div
+            mode: 'static', // 
+            position: { left: '50%', top: '50%' }, // center joystick in div
+            color: 'hotpink',
+            size: 100 // diameter
+        });
+
+        // event listener for joystick movement
+        joystick.on('move', function(evt, data) {
+            // check if movement data includes direction and distance
+            if (data.direction && data.distance) {
+                const angle = data.angle.degree; // 0 is right, moving ccw
+                const speed = Math.min(data.distance / 50, 1) * 100; // 0-100 strength range
+                
+                //send data back to esp
+                socket.send("SPEED: " + speed + "--" + "ANGLE: " + angle);
+            }
+        });
+
+        // event listener for when the joystick is released
+        joystick.on('end', function() {
+            socket.send("AT REST");
+        });
+    </script>
+</body>
+</html>
