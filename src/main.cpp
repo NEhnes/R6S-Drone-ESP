@@ -33,6 +33,7 @@ int rMotorSpeed = 50;
 #include <SPIFFS.h>
 #include "esp_camera.h"
 #include <Arduino.h>
+#include "credentials.h"
 
 #pragma region CAMERA_CONFIG
 // Camera configuration for XIAO ESP32S3 Sense
@@ -54,15 +55,7 @@ int rMotorSpeed = 50;
 #define PCLK_GPIO_NUM 13
 #pragma endregion
 
-#pragma region creds_n_stream_data
-// login credentials
-const char *ssid = "*****";
-const char *password = "*****";
-
-const char *phone_ssid = "*****";
-const char *phone_password = "*****";
-
-const char *school_ssid = "*****";
+#pragma region stream_data
 
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
