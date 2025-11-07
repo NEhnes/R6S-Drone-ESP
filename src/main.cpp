@@ -62,8 +62,8 @@ AsyncWebSocket ws("/ws");
 String speedString, angleString;
 
 uint64_t msecs, lastMsecs;
-int targetFPS = 5;
-int jpegQuality = 50;
+int targetFPS = 10; // was 5
+int jpegQuality = 10;
 int frameInterval = 1000 / targetFPS;
 int frameCounter = 0;
 #pragma endregion
@@ -72,10 +72,13 @@ void BroadcastCameraFrame();
 void PrintIP();
 void DriveMotors();
 void InputToPWM(int _speed, double _angle);
-void SerialMotorData();
+void PrintSerialData();
 
 void setup()
 {
+
+  delay(10000); // added to clear up a serial output issue
+
   pinMode(AIN1_PIN, OUTPUT);
   pinMode(AIN2_PIN, OUTPUT);
   pinMode(BIN1_PIN, OUTPUT);
@@ -130,7 +133,7 @@ void setup()
   Serial.println();
   Serial.println("Connecting...");
 
-  WiFi.begin(phone_ssid, phone_password);
+  WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) 
   {
@@ -209,8 +212,7 @@ void setup()
 void loop() {
   msecs = millis();
 
-
-  if (msecs - lastMsecs > frameInterval){ // 12hz
+  if (msecs - lastMsecs > frameInterval){ // hz specified above
     BroadcastCameraFrame();
     lastMsecs = msecs;
     
@@ -222,9 +224,9 @@ void loop() {
 
     frameCounter++;
     if (frameCounter % 12 == 0){
-      SerialMotorData();
+      PrintSerialData();
+      frameCounter = 0;
     }
-    // PrintIP();
   }
 
   if (msecs - lastMsecs > frameInterval / 2){ // 24hz
@@ -240,19 +242,16 @@ void BroadcastCameraFrame()
 {
   camera_fb_t *fb = esp_camera_fb_get(); // fill buffer with new frame
 
-  if (!fb)
-  {
+  if (!fb){
     Serial.println("Camera capture failed");
     return;
   }
 
   // skip sending if buffer full
-  if (ws.availableForWriteAll())
-  {
+  if (ws.availableForWriteAll()){
     ws.binaryAll(fb->buf, fb->len);
   }
-  else
-  {
+  else{
     Serial.println("Skipped frame: WebSocket buffer full");
   }
 
@@ -338,7 +337,7 @@ void InputToPWM(int _speed, double _angle){
   rMotorSpeed = map(rMotorSpeed, 0, 100, 0, 255);
 }
 
-void SerialMotorData(){
+void PrintSerialData(){
   Serial.print("L_Forward: ");
   Serial.print(aForward);
   Serial.print(" /// R_Forward: ");
@@ -348,4 +347,7 @@ void SerialMotorData(){
   Serial.println(lMotorSpeed);
   Serial.print("RIGHT PWM OUTPUT: ");
   Serial.println(rMotorSpeed);
+
+  Serial.print("Temp: ");
+  Serial.println(temperatureRead());
 }
