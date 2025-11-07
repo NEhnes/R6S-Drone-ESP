@@ -19,28 +19,35 @@ I understand what everything does but not the syntax intricaties of certain thin
     <!-- pre-existing joystick library pulled from web by client -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.0/nipplejs.min.js"></script>
     <style>
-        /*style joystick div*/
+
+        /* add text div later on */
+
+        /* joystick div */
         #joystick {
-            width: 100px;
-            height: 100px;
+            width: 200px;
+            height: 200px;
             position: fixed;
-            left: 40px;
-            top: '50%';
+            left: 150px;
+            top: 50%;
             transform: translateY(-50%);
-            border: 3px slateblue;
+            border: 3px solid slateblue;
+            background-color: rgba(100, 100, 100, 0.1); /* So you can see the container */
         }
         /* camera stream div */
         #stream {
             width: 640px;
             height: 480px;
-            margin: 20px auto;
-            display: block;
+            position: fixed;
+            left: 70%;
+            top: 50%;
+            transform: translate(-50%, -50%); /* Centers it at that position */
+            border-radius: 25px;
         }
     </style>
 </head>
-<body style="text-align:center; font-family:Arial, sans-serif;">
-    <h1 style="color:blue;">ESP32 Motor Control</h1>
-    <p style="font-style: italic; text-shadow: 2px 2px 5px gray">Welcome to the ESP32 motor control interface!</p>
+<body style="text-align:center; font-family:Arial, sans-serif; background-color: darkslategrey;">
+    <h1 style="text-align: left; color: fuchsia;">ESP32 Motor Control</h1>
+    <p style="text-align: left; font-style: italic; color: fuschia;">Welcome to the ESP32 motor control interface!</p>
 
     <!-- img element for camera feed -->
     <img id="stream" src="">
@@ -76,7 +83,7 @@ I understand what everything does but not the syntax intricaties of certain thin
             mode: 'static', // 
             position: { left: '50%', top: '50%' }, // center joystick in div
             color: 'hotpink',
-            size: 100 // diameter
+            size: 300 // diameter
         });
 
         // event listener for joystick movement
@@ -87,13 +94,31 @@ I understand what everything does but not the syntax intricaties of certain thin
                 const speed = Math.min(data.distance / 50, 1) * 100; // 0-100 strength range
                 
                 //send data back to esp
-                socket.send("SPEED: " + speed + "--" + "ANGLE: " + angle);
+                // socket.send("SPEED: " + speed + "--" + "ANGLE: " + angle);
+
+                // experimental, optimized send below
+                const buffer = new ArrayBuffer(8);
+                const view = new Float32Array(buffer);
+
+                view[0] = angle;
+                view[1] = speed;
+
+                socket.send(buffer);
             }
         });
 
         // event listener for when the joystick is released
         joystick.on('end', function() {
-            socket.send("AT REST");
+            // socket.send("AT REST");
+
+            // new, optimized version
+            const buffer = new ArrayBuffer(8);
+            const view = new Float32Array(buffer);
+
+            view[0] = 0;
+            view[1] = 0;
+
+            socket.send(buffer);
         });
     </script>
 </body>

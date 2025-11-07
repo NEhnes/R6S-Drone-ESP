@@ -8,6 +8,9 @@
   **Certain other minor details were beyond my goals for this project
 */
 
+float angle = 0;
+float speed = 0;
+
 #pragma region PWM_VARIABLES
 
 #define AIN1_PIN 3
@@ -71,7 +74,7 @@ int frameCounter = 0;
 void BroadcastCameraFrame();
 void PrintIP();
 void DriveMotors();
-void InputToPWM(int _speed, double _angle);
+void InputToPWM();
 void PrintSerialData();
 
 void setup()
@@ -158,34 +161,39 @@ void setup()
 
 #pragma region WEBSOCKET_INIT
   // WebSocket event handler
-  ws.onEvent([](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
-             {
+  ws.onEvent([](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len){
 
     if (type == WS_EVT_DATA) {
+      float* values = (float*)data;
+      angle = values[0];
+      speed = values[1];
+    }
+    
+
+    
       // recv and build msg string
-      String msg = "";
-      for (size_t i = 0; i < len; i++) {
-        msg += (char)data[i];
-      }
-      Serial.println("Received: " + msg);
+      // String msg = "";
+      // for (size_t i = 0; i < len; i++) {
+      //   msg += (char)data[i];
+      // }
+      // Serial.println("Received: " + msg);
 
       /* PARSE JOYSTICK DATA */
-      if (msg.substring(0, 6) != "AT REST"){
-        int speedStartIndex = msg.indexOf("SPEED: ") + 7;
-        speedString = msg.substring(speedStartIndex, speedStartIndex + 3); // grab first 3 char (incl '.')
-        int angleStartIndex = msg.indexOf("ANGLE: ") + 7;
-        angleString = msg.substring(angleStartIndex, angleStartIndex + 3);
-        if (speedString.substring(2, 1) == "."){
-          speedString.remove(2); //3 digit numbers
-        } else if (speedString.substring(1, 1) == "."){
-          speedString.remove(1, 2); //single digit number
-        }
-        Serial.print("SPEED: ");
-        Serial.println(speedString);
-      } else {
-        speedString = "0";
-      }
-    } });
+      // if (msg.substring(0, 6) != "AT REST"){
+      //   int speedStartIndex = msg.indexOf("SPEED: ") + 7;
+      //   speedString = msg.substring(speedStartIndex, speedStartIndex + 3); // grab first 3 char (incl '.')
+      //   int angleStartIndex = msg.indexOf("ANGLE: ") + 7;
+      //   angleString = msg.substring(angleStartIndex, angleStartIndex + 3);
+      //   if (speedString.substring(2, 1) == "."){
+      //     speedString.remove(2); //3 digit numbers
+      //   } else if (speedString.substring(1, 1) == "."){
+      //     speedString.remove(1, 2); //single digit number
+      //   }
+      //   Serial.print("SPEED: ");
+      //   Serial.println(speedString);
+      // } else {
+      //   speedString = "0";
+  });
 
 #pragma endregion
 
@@ -216,10 +224,10 @@ void loop() {
     BroadcastCameraFrame();
     lastMsecs = msecs;
     
-    int speedInt = speedString.toInt();
-    double angleInt = angleString.toDouble();
+    // int speedInt = speedString.toInt();
+    // double angleInt = angleString.toDouble();
     
-    InputToPWM(speedInt, angleInt);
+    InputToPWM();
     DriveMotors();
 
     frameCounter++;
@@ -280,13 +288,13 @@ void DriveMotors()
   analogWrite(PWM_B, abs(rMotorSpeed));
 }
 
-void InputToPWM(int _speed, double _angle){
+void InputToPWM(){
 
   // use simplified taylor series instead of sin/cos to improve performance if needed
   // don't need double accuracy. ints are fine
-  int speed = _speed;
+  // int speed = _speed;
   speed = constrain(speed, 0, 100);
-  int angle = (int) _angle;
+  // int angle = (int) _angle;
 
   Serial.print("Speed: ");
   Serial.print(speed);
