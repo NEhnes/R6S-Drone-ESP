@@ -67,15 +67,13 @@ int frameInterval = 1000 / targetFPS;
 int frameCounter = 0;
 #pragma endregion
 
-void BroadcastCameraFrame();
-void PrintIP();
-void DriveMotors();
-void PrintSerialData();
+void broadcastCameraFrame();
+void driveMotors();
+void printIP();
+void printData();
 
-void setup()
-{
-
-  delay(10000); // added to clear up a serial output issue
+void setup() {
+  delay(10000); // added bcz serial output is delayed on power up
 
   pinMode(AIN1_PIN, OUTPUT);
   pinMode(AIN2_PIN, OUTPUT);
@@ -121,8 +119,7 @@ void setup()
 
   // camera init
   esp_err_t err = esp_camera_init(&config);
-  if (err != ESP_OK) 
-  {
+  if (err != ESP_OK) {
     Serial.printf("camera init failed with error 0x%x", err); // print error code (hexadecimal)
     return;
   }
@@ -130,12 +127,11 @@ void setup()
 
   Serial.begin(115200);
   Serial.println();
-  Serial.println("Connecting...");
+  Serial.println("connecting...");
 
   WiFi.begin(ssid, password);
 
-  while (WiFi.status() != WL_CONNECTED) 
-  {
+  while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.println(".");
   }
@@ -147,18 +143,16 @@ void setup()
   Serial.println(WiFi.localIP());
 
   server.begin();
-  Serial.println("Server started");
+  Serial.println("server started");
 
-  if (!SPIFFS.begin(true)) // spiffs error message
-  {
-    Serial.println("An error has occurred while mounting SPIFFS");
+  if (!SPIFFS.begin(true)) { // spiffs error message
+    Serial.println("SPIFFS error");
     return;
   }
 
 #pragma region WEBSOCKET_INIT
   // WebSocket event handler
   ws.onEvent([](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len){
-
     if (type == WS_EVT_DATA) {
       float* values = (float*)data;
       vL = values[0];
@@ -169,19 +163,17 @@ void setup()
 #pragma endregion
 
 #pragma region SERVE_WEBPAGE
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-            {
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     
-    File file = SPIFFS.open("/index.html", "r");
-    if (!file) {
-      request->send(404, "text/plain", "File not found");
-      return;
-    }
-    request->send(SPIFFS, "/index.html", "text/html");
-    file.close(); });
-#pragma endregion
-
+  File file = SPIFFS.open("/index.html", "r");
+  if (!file) {
+    request->send(404, "text/plain", "File not found");
+    return;
+  }
+  request->send(SPIFFS, "/index.html", "text/html");
+  file.close(); });
   server.addHandler(&ws); // add WebSocket
+  #pragma endregion
 }
 
 //  *********************************************************
@@ -192,19 +184,19 @@ void loop() {
   msecs = millis();
 
   if (msecs - lastMsecs > frameInterval){ // hz specified above
-    BroadcastCameraFrame();
+    broadcastCameraFrame();
     lastMsecs = msecs;
 
-    DriveMotors();
+    driveMotors();
 
     frameCounter++;
-    if (frameCounter % 12 == 0){
-      PrintSerialData();
+    if (frameCounter % 12 == 0) {
+      printData();
       frameCounter = 0;
     }
   }
 
-  if (msecs - lastMsecs > frameInterval / 2){ // 24hz
+  if (msecs - lastMsecs > frameInterval / 2) { // 24hz
     ws.cleanupClients(); // not necessary to run as often
   }
 }
@@ -213,8 +205,7 @@ void loop() {
 //  ***************CUSTOM METHODS BELOW**********************
 //  *********************************************************
 
-void BroadcastCameraFrame()
-{
+void broadcastCameraFrame() {
   camera_fb_t *fb = esp_camera_fb_get(); // fill buffer with new frame
 
   if (!fb){
@@ -234,8 +225,7 @@ void BroadcastCameraFrame()
   esp_camera_fb_return(fb);
 }
 
-void DriveMotors()
-{
+void driveMotors() {
   // this is for tb6612fng, have to write high/lo for direction then write speed to pwm pin
   bool aForward = (vL >= 0); // determine direction
   bool bForward = (vR >= 0);
@@ -252,7 +242,7 @@ void DriveMotors()
   analogWrite(PWM_B, abs(vR));
 }
 
-void PrintSerialData(){
+void printData() {
   Serial.print("L_Velocity: ");
   Serial.print(vL);
   Serial.print(" /// R_Velocity: ");
@@ -262,8 +252,7 @@ void PrintSerialData(){
   Serial.println(temperatureRead());
 }
 
-void PrintIP()
-{
+void printIP() {
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 }
