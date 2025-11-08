@@ -2,31 +2,27 @@
   Nathan Ehnes
   June 18 2025
   TEJ4M Creative engineering project
-
-  **I did not write code for websocket event listeners, just the details within
-  **Camera config is straight from an example repo, aside from image resolution/quality
-  **Certain other minor details were beyond my goals for this project
 */
 
-float angle = 0;
-float speed = 0;
+float vL = 0;
+float vR = 0;
 
 #pragma region PWM_VARIABLES
 
+// tb6612fng driver, write high/low to IN1/IN2 for direction, then pwm to PWM pin for speed
+
+// left side
 #define AIN1_PIN 3
 #define AIN2_PIN 4
 #define PWM_A 5
-bool aForward = true;
 
+// right side
 #define BIN1_PIN 2
 #define BIN2_PIN 1
 #define PWM_B 0
-bool bForward = true;
 
 #define STBY_PIN 9
 
-int lMotorSpeed = 50;
-int rMotorSpeed = 50;
 
 #pragma endregion
 
@@ -74,7 +70,6 @@ int frameCounter = 0;
 void BroadcastCameraFrame();
 void PrintIP();
 void DriveMotors();
-void InputToPWM();
 void PrintSerialData();
 
 void setup()
@@ -94,6 +89,7 @@ void setup()
 
   msecs = lastMsecs = millis();
 
+  // give this shit its own header file later
 #pragma region CAMERA_CONFIG
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
@@ -165,34 +161,9 @@ void setup()
 
     if (type == WS_EVT_DATA) {
       float* values = (float*)data;
-      angle = values[0];
-      speed = values[1];
+      vL = values[0];
+      vR = values[1];
     }
-    
-
-    
-      // recv and build msg string
-      // String msg = "";
-      // for (size_t i = 0; i < len; i++) {
-      //   msg += (char)data[i];
-      // }
-      // Serial.println("Received: " + msg);
-
-      /* PARSE JOYSTICK DATA */
-      // if (msg.substring(0, 6) != "AT REST"){
-      //   int speedStartIndex = msg.indexOf("SPEED: ") + 7;
-      //   speedString = msg.substring(speedStartIndex, speedStartIndex + 3); // grab first 3 char (incl '.')
-      //   int angleStartIndex = msg.indexOf("ANGLE: ") + 7;
-      //   angleString = msg.substring(angleStartIndex, angleStartIndex + 3);
-      //   if (speedString.substring(2, 1) == "."){
-      //     speedString.remove(2); //3 digit numbers
-      //   } else if (speedString.substring(1, 1) == "."){
-      //     speedString.remove(1, 2); //single digit number
-      //   }
-      //   Serial.print("SPEED: ");
-      //   Serial.println(speedString);
-      // } else {
-      //   speedString = "0";
   });
 
 #pragma endregion
@@ -223,11 +194,7 @@ void loop() {
   if (msecs - lastMsecs > frameInterval){ // hz specified above
     BroadcastCameraFrame();
     lastMsecs = msecs;
-    
-    // int speedInt = speedString.toInt();
-    // double angleInt = angleString.toDouble();
-    
-    InputToPWM();
+
     DriveMotors();
 
     frameCounter++;
@@ -267,14 +234,11 @@ void BroadcastCameraFrame()
   esp_camera_fb_return(fb);
 }
 
-void PrintIP()
-{
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-}
-
 void DriveMotors()
-{ // ADDED FROM OTHER PROJ
+{
+  // this is for tb6612fng, have to write high/lo for direction then write speed to pwm pin
+  bool aForward = (vL >= 0); // determine direction
+  bool bForward = (vR >= 0);
 
   // write direction
   digitalWrite(AIN1_PIN, aForward);
@@ -284,78 +248,22 @@ void DriveMotors()
   digitalWrite(STBY_PIN, HIGH);
 
   // write speed
-  analogWrite(PWM_A, abs(lMotorSpeed));
-  analogWrite(PWM_B, abs(rMotorSpeed));
-}
-
-void InputToPWM(){
-
-  // use simplified taylor series instead of sin/cos to improve performance if needed
-  // don't need double accuracy. ints are fine
-  // int speed = _speed;
-  speed = constrain(speed, 0, 100);
-  // int angle = (int) _angle;
-
-  Serial.print("Speed: ");
-  Serial.print(speed);
-  Serial.print(" ||| Angle: ");
-  Serial.println(angle);
-
-  // determine quadrant for later
-  int quadrant;
-  if (angle < 90){
-    quadrant = 1;
-  } else if (angle < 180) {
-    quadrant = 4;
-  } else if (angle < 270) {
-    quadrant = 3;
-  } else {
-    quadrant = 2;
-  }
-
-  float angleRadians = angle * PI / 180.0;
-
-  // calculate components
-  int yComponent = (int) speed * sin(angleRadians);
-  int xComponent = (int) speed * cos(angleRadians);
-
-  // +/- direction
-  if (quadrant >= 3){
-    yComponent = -yComponent;
-  }
-  if (quadrant == 2 || quadrant == 3){
-    xComponent = -xComponent;
-  }
-
-  // sum left/right speeds
-  lMotorSpeed = yComponent + xComponent/2;
-  rMotorSpeed = yComponent - xComponent/2;
-
-  aForward = (lMotorSpeed >= 0);
-  bForward = (rMotorSpeed >= 0);
-
-
-  // clamp and convert values to pwm range
-  if (lMotorSpeed > 100) lMotorSpeed = 100;
-  if (lMotorSpeed < 0) lMotorSpeed = 0;
-  lMotorSpeed = map(lMotorSpeed, 0, 100, 0, 255);
-
-  if (rMotorSpeed > 100) rMotorSpeed = 100;
-  if (rMotorSpeed < 0) rMotorSpeed = 0;
-  rMotorSpeed = map(rMotorSpeed, 0, 100, 0, 255);
+  analogWrite(PWM_A, abs(vL));
+  analogWrite(PWM_B, abs(vR));
 }
 
 void PrintSerialData(){
-  Serial.print("L_Forward: ");
-  Serial.print(aForward);
-  Serial.print(" /// R_Forward: ");
-  Serial.println(bForward);
-
-  Serial.print("LEFT PWM OUTPUT: ");
-  Serial.println(lMotorSpeed);
-  Serial.print("RIGHT PWM OUTPUT: ");
-  Serial.println(rMotorSpeed);
+  Serial.print("L_Velocity: ");
+  Serial.print(vL);
+  Serial.print(" /// R_Velocity: ");
+  Serial.println(vR);
 
   Serial.print("Temp: ");
   Serial.println(temperatureRead());
+}
+
+void PrintIP()
+{
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
 }

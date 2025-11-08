@@ -1,16 +1,6 @@
 <!--
 Nathan Ehnes
 2024-25 Sem 2 Creative Eng Project
-
-FYI** I myseld did not write all of the code in this file. 
-
-I learned the very basics of HTML, CSS and JS so that I could do the majority of this document.
-
-Web development skills were not within the scope of my project and learning.
-Opening a websocket and creating event listeners was beyond my abilities, so these elements are "inspired"
-by git repos/examples
-
-I understand what everything does but not the syntax intricaties of certain things
 -->
 <!DOCTYPE html>
 <html>
@@ -92,16 +82,27 @@ I understand what everything does but not the syntax intricaties of certain thin
             if (data.direction && data.distance) {
                 const angle = data.angle.degree; // 0 is right, moving ccw
                 const speed = Math.min(data.distance / 50, 1) * 100; // 0-100 strength range
-                
-                //send data back to esp
-                // socket.send("SPEED: " + speed + "--" + "ANGLE: " + angle);
 
-                // experimental, optimized send below
+                let angleRad = angle * Math.PI / 180.0; // to radians
+                let xSpeed = speed * Math.cos(angleRad); // range: [-100, 100]
+                let ySpeed = speed * Math.sin(angleRad); // range: [-100, 100]
+
+                let vL = ySpeed + xSpeed; // left motor speed
+                let vR = ySpeed - xSpeed; // right motor speed
+
+                // normalize speeds to be within [-100, 100]
+                const maxSpeed = Math.max(Math.abs(vL), Math.abs(vR));
+                if (maxSpeed > 100) {
+                    vL = (vL / maxSpeed) * 100;
+                    vR = (vR / maxSpeed) * 100;
+                } 
+
+                // send data to ESP32
                 const buffer = new ArrayBuffer(8);
                 const view = new Float32Array(buffer);
 
-                view[0] = angle;
-                view[1] = speed;
+                view[0] = vL;
+                view[1] = vR;
 
                 socket.send(buffer);
             }
