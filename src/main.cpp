@@ -3,29 +3,6 @@
   June 18 2025
   TEJ4M Creative engineering project
 */
-
-float vL = 0;
-float vR = 0;
-
-#pragma region PWM_VARIABLES
-
-// tb6612fng driver, write high/low to IN1/IN2 for direction, then pwm to PWM pin for speed
-
-// left side
-#define AIN1_PIN 3
-#define AIN2_PIN 4
-#define PWM_A 5
-
-// right side
-#define BIN1_PIN 2
-#define BIN2_PIN 1
-#define PWM_B 0
-
-#define STBY_PIN 9
-
-
-#pragma endregion
-
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <AsyncTCP.h>
@@ -33,46 +10,30 @@ float vR = 0;
 #include "esp_camera.h"
 #include <Arduino.h>
 #include "credentials.h"
+#include "config.h"
 
-#pragma region CAMERA_CONFIG
-// Camera configuration for XIAO ESP32S3 Sense
-#define PWDN_GPIO_NUM -1  // Power down is not used
-#define RESET_GPIO_NUM -1 // Software reset
-#define XCLK_GPIO_NUM 10
-#define SIOD_GPIO_NUM 40
-#define SIOC_GPIO_NUM 39
-#define Y9_GPIO_NUM 48
-#define Y8_GPIO_NUM 11
-#define Y7_GPIO_NUM 12
-#define Y6_GPIO_NUM 14
-#define Y5_GPIO_NUM 16
-#define Y4_GPIO_NUM 18
-#define Y3_GPIO_NUM 17
-#define Y2_GPIO_NUM 15
-#define VSYNC_GPIO_NUM 38
-#define HREF_GPIO_NUM 47
-#define PCLK_GPIO_NUM 13
-#pragma endregion
-
-#pragma region stream_data
+// motor velocities
+float vL = 0;
+float vR = 0;
 
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
-String speedString, angleString;
 
 uint64_t msecs, lastMsecs;
 int targetFPS = 10; // was 5
 int jpegQuality = 10;
 int frameInterval = 1000 / targetFPS;
+int cleanupClientInterval = frameInterval / 2;
 int frameCounter = 0;
-#pragma endregion
 
 void broadcastCameraFrame();
 void driveMotors();
-void printIP();
 void printData();
 
 void setup() {
+
+  Serial.begin(115200);
+
   delay(10000); // added bcz serial output is delayed on power up
 
   pinMode(AIN1_PIN, OUTPUT);
@@ -80,14 +41,13 @@ void setup() {
   pinMode(BIN1_PIN, OUTPUT);
   pinMode(BIN2_PIN, OUTPUT);
   pinMode(STBY_PIN, OUTPUT);
-  pinMode(PWM_A, OUTPUT);
-  pinMode(PWM_B, OUTPUT);
+  pinMode(PWM_A_PIN, OUTPUT);
+  pinMode(PWM_B_PIN, OUTPUT);
 
   digitalWrite(STBY_PIN, HIGH);
 
   msecs = lastMsecs = millis();
 
-  // give this shit its own header file later
 #pragma region CAMERA_CONFIG
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
@@ -121,16 +81,15 @@ void setup() {
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK) {
     Serial.printf("camera init failed with error 0x%x", err); // print error code (hexadecimal)
-    return;
+    while (true); // halt execution
   }
   else Serial.println("camera init successful");
 
-  Serial.begin(115200);
   Serial.println();
   Serial.println("connecting...");
-
   WiFi.begin(ssid, password);
 
+  // loop while connecting
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.println(".");
@@ -147,11 +106,10 @@ void setup() {
 
   if (!SPIFFS.begin(true)) { // spiffs error message
     Serial.println("SPIFFS error");
-    return;
+    while(true); // halt execution
   }
 
-#pragma region WEBSOCKET_INIT
-  // WebSocket event handler
+  // WebSocket event handler for receiving motor commands
   ws.onEvent([](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len){
     if (type == WS_EVT_DATA) {
       float* values = (float*)data;
@@ -160,20 +118,17 @@ void setup() {
     }
   });
 
-#pragma endregion
-
-#pragma region SERVE_WEBPAGE
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    
-  File file = SPIFFS.open("/index.html", "r");
-  if (!file) {
-    request->send(404, "text/plain", "File not found");
-    return;
-  }
-  request->send(SPIFFS, "/index.html", "text/html");
-  file.close(); });
+  // Serve index.html from SPIFFS
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {  
+    File file = SPIFFS.open("/index.html", "r");
+    if (!file) {
+      request->send(404, "text/plain", "File not found");
+      while(true); // halt execution
+    }
+    request->send(SPIFFS, "/index.html", "text/html");
+    file.close(); 
+  });
   server.addHandler(&ws); // add WebSocket
-  #pragma endregion
 }
 
 //  *********************************************************
@@ -185,18 +140,17 @@ void loop() {
 
   if (msecs - lastMsecs > frameInterval){ // hz specified above
     broadcastCameraFrame();
-    lastMsecs = msecs;
 
     driveMotors();
 
-    frameCounter++;
-    if (frameCounter % 12 == 0) {
+    if (++frameCounter % 12 == 0) {
       printData();
       frameCounter = 0;
     }
+    lastMsecs = msecs;
   }
 
-  if (msecs - lastMsecs > frameInterval / 2) { // 24hz
+  if (msecs - lastMsecs > cleanupClientInterval) { // 24hz
     ws.cleanupClients(); // not necessary to run as often
   }
 }
@@ -238,8 +192,8 @@ void driveMotors() {
   digitalWrite(STBY_PIN, HIGH);
 
   // write speed
-  analogWrite(PWM_A, abs(vL));
-  analogWrite(PWM_B, abs(vR));
+  analogWrite(PWM_A_PIN, abs(vL));
+  analogWrite(PWM_B_PIN, abs(vR));
 }
 
 void printData() {
@@ -250,9 +204,4 @@ void printData() {
 
   Serial.print("Temp: ");
   Serial.println(temperatureRead());
-}
-
-void printIP() {
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
 }
