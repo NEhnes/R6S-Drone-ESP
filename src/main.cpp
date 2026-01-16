@@ -21,7 +21,7 @@ AsyncWebSocket ws("/ws");
 
 uint64_t msecs, lastMsecs;
 int targetFPS = 10; // was 5
-int jpegQuality = 10;
+int jpegQuality = 20;
 int frameInterval = 1000 / targetFPS;
 int cleanupClientInterval = frameInterval / 2;
 int frameCounter = 0;
@@ -185,6 +185,8 @@ void driveMotors() {
   bool bForward = (vR >= 0);
 
   // write direction
+  Serial.println("Driving motors");
+  Serial.println();
   digitalWrite(AIN1_PIN, aForward);
   digitalWrite(AIN2_PIN, !aForward);
   digitalWrite(BIN1_PIN, bForward);
