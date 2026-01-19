@@ -20,8 +20,8 @@ AsyncWebSocket ws("/ws");
 
 uint64_t msecs, lastMsecs;
 int targetFPS = 10; // was 5
-int minFPS = 7;
-int maxFPS = 13;
+int minFPS = 5;
+int maxFPS = 10;
 int jpegQuality = 20;
 int frameInterval = 1000 / targetFPS;
 int cleanupClientInterval = frameInterval / 2;
@@ -174,8 +174,8 @@ void broadcastCameraFrame() {
     ws.binaryAll(fb->buf, fb->len);
     successfulFrames++;
 
-    if (successfulFrames % 30 == 0) { // every 30 sucessful frames, try to increase fps
-      if (targetFPS < maxFPS) { // cap at 30 fps
+    if (successfulFrames % 15 == 0) { // every 15 sucessful frames, try to increase fps
+      if (targetFPS < maxFPS) { // cap at maxFPS
         targetFPS++;
         frameInterval = 1000 / targetFPS;
         Serial.print("Increased target FPS to: ");
@@ -188,6 +188,8 @@ void broadcastCameraFrame() {
     Serial.println("Skipped frame: WebSocket buffer full");
       targetFPS -= 2; // reduce fps if buffer full
       if (targetFPS < minFPS) targetFPS = minFPS;
+      Serial.print("Decreased target FPS to: ");
+      Serial.println(targetFPS);
       frameInterval = 1000 / targetFPS;
   }
 
