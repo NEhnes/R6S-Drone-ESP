@@ -2,7 +2,7 @@
 
 ## What is this?
 
-This is a fun personal project: a DIY drone inspired by the ones in Rainbow Six Siege. It's built around a Seeed Studio XIAO ESP32 with a camera, motor drivers, DC motors, and powered by a LiPo battery. The drone sets up a web server to stream video over WebSocket and lets you control it with a joystick from the browser. Great for tinkering, learning ESP32 stuff, or just messing around with remote-controlled gadgets.
+This is a fun personal project: a DIY drone inspired by the ones in Rainbow Six Siege. It's built around a Seeed Studio XIAO ESP32-s3-sense with a camera module, motor drivers, DC motors, and powered by a LiPo battery. The drone sets up a web server to stream video over WebSocket and lets you control it with a joystick from the browser.
 
 ## Cool Stuff It Does
 
@@ -12,17 +12,18 @@ This is a fun personal project: a DIY drone inspired by the ones in Rainbow Six 
 - Battery-powered for portability.
 - Simple web page for viewing the stream and controlling the drone.
 
-## Hardware I Used
+## Hardware Used
 
-- Seeed Studio XIAO ESP32
-- Camera module (like OV2640 that works with ESP32)
-- Motor driver board (I used something like L298N)
-- A couple DC motors for wheels/tracks
-- LiPo battery to power it all
-- Some kind of chassis (I 3D-printed a simple one, but anything works)
+- Seeed Studio XIAO ESP32-s3-sense
+- OV2640 camera module
+- MTB6612FNG motor driver module
+- JGA25-370 300rpm 12v DC gearmotors
+- 3s, 650mAh LiPo
+- MP1584 buck converter
+- 5v DC mini fan
+- 3-D printed chassis & wheels (ABS/PLA)
 
-## Notes
+## Key Design Choices / Optimizations
 
-This is just a demo I threw together for fun – not polished or production-ready. If it breaks, hack it! Feel free to fork and improve.
+Switched HTTPS protocol to a websocket - lower latency and full duplex enables quicker real-time feedback
 
-No license or anything formal – use at your own risk.
