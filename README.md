@@ -40,3 +40,10 @@ This is a fun personal project: a DIY drone inspired by the ones in Rainbow Six 
 - Motor driver features flyback protection, thermal shutdown, undervoltage detection, and shoot-through reduction
 - 3-D printed chassis
 
+## Design Challenges
+
+### Video Stream Buffer Full
+
+max frame size that cam will accept = svga (10 quality)
+but, mobile phone will not work flawlessly, even though camera can keep up. inconsitent bandwidth and poor reception in my location
+need wireless router
