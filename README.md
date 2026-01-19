@@ -36,7 +36,7 @@ This is a fun personal project: a DIY drone inspired by the ones in Rainbow Six 
 - ESP32 in station (STA) mode instead of access point (AP) - less intensive processing
 
 ### Electrical/Mechanical:
-- Active cooling, vent holes & chip temperature monitoring - addresses heat concerns of the small footprint of the ESP32 board
+- Fan for active cooling, heat sink, vent holes & chip temperature monitoring - address heat concerns of the small footprint of the ESP32 board
 - Motor driver features flyback protection, thermal shutdown, undervoltage detection, and shoot-through reduction
 - 3-D printed chassis
 
