@@ -1,7 +1,6 @@
 /*
   Nathan Ehnes
-  June 18 2025
-  TEJ4M Creative engineering project
+  Last edit: Jan 19, 2026
 */
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
@@ -21,10 +20,13 @@ AsyncWebSocket ws("/ws");
 
 uint64_t msecs, lastMsecs;
 int targetFPS = 10; // was 5
+int minFPS = 7;
+int maxFPS = 13;
 int jpegQuality = 20;
 int frameInterval = 1000 / targetFPS;
 int cleanupClientInterval = frameInterval / 2;
 int frameCounter = 0;
+int successfulFrames = 0;
 
 void broadcastCameraFrame();
 void driveMotors();
@@ -109,7 +111,7 @@ void setup() {
     while(true); // halt execution
   }
 
-  // WebSocket event handler for receiving motor commands
+  // webSocket event handler for receiving motor commands
   ws.onEvent([](AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len){
     if (type == WS_EVT_DATA) {
       float* values = (float*)data;
@@ -118,7 +120,7 @@ void setup() {
     }
   });
 
-  // Serve index.html from SPIFFS
+  // serve index.html from SPIFFS
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {  
     File file = SPIFFS.open("/index.html", "r");
     if (!file) {
@@ -170,9 +172,23 @@ void broadcastCameraFrame() {
   // skip sending if buffer full
   if (ws.availableForWriteAll()){
     ws.binaryAll(fb->buf, fb->len);
+    successfulFrames++;
+
+    if (successfulFrames % 30 == 0) { // every 30 sucessful frames, try to increase fps
+      if (targetFPS < maxFPS) { // cap at 30 fps
+        targetFPS++;
+        frameInterval = 1000 / targetFPS;
+        Serial.print("Increased target FPS to: ");
+        Serial.println(targetFPS);
+      }
+      successfulFrames = 0;
+    }
   }
   else{
     Serial.println("Skipped frame: WebSocket buffer full");
+      targetFPS -= 2; // reduce fps if buffer full
+      if (targetFPS < minFPS) targetFPS = minFPS;
+      frameInterval = 1000 / targetFPS;
   }
 
   // return frame buffer
