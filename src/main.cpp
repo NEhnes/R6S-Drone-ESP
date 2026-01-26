@@ -20,8 +20,8 @@ AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
 uint64_t msecs, lastMsecs;
-int targetFPS = 10; // was 5
-int jpegQuality = 20;
+int targetFPS = 1; // was 5
+int jpegQuality = 30;
 int frameInterval = 1000 / targetFPS;
 int cleanupClientInterval = frameInterval / 2;
 int frameCounter = 0;
@@ -69,7 +69,7 @@ void setup() {
   config.pin_pwdn = PWDN_GPIO_NUM;
   config.pin_reset = RESET_GPIO_NUM;
   config.xclk_freq_hz = 20000000;
-  config.frame_size = FRAMESIZE_QQVGA;    // 160x120
+  config.frame_size = FRAMESIZE_SVGA;    // 1024x768
   config.pixel_format = PIXFORMAT_JPEG;  // For streaming
   config.grab_mode = CAMERA_GRAB_LATEST; // DEFAULT: GRAB_WHEN_EMPTY
   config.fb_location = CAMERA_FB_IN_DRAM;
@@ -206,4 +206,9 @@ void printData() {
 
   Serial.print("Temp: ");
   Serial.println(temperatureRead());
+
+  Serial.print("WiFi RSSI: ");
+  Serial.println(WiFi.RSSI());  // signal strength
+  Serial.print("Free heap: ");
+  Serial.println(ESP.getFreeHeap());  // memory pressure
 }
