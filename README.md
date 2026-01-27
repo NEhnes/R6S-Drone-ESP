@@ -1,4 +1,5 @@
 # ESP32-WiFi-RC-Video-Rover
+### _Documentation & Demo will be added ASAP_
 
 A WiFi-controlled autonomous rover featuring live video streaming and real-time motor control, built on a constrained embedded platform. Demonstrates practical solutions to latency, power, and thermal challenges in real-time wireless systems.
 
