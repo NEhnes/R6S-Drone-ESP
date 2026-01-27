@@ -11,18 +11,18 @@ A WiFi-controlled autonomous rover featuring live video streaming and real-time 
 This project showcases embedded systems engineering fundamentals: **real-time constraints, resource optimization, wireless protocols, and thermal management** on a microcontroller with severe bandwidth and power limitations.
 
 **Hardware Stack:**
-- **MCU**: Seeed Studio XIAO ESP32-S3 (8MB Flash, 8MB PSRAM, Wi-Fi)
-- **Camera**: OV2640 (~10 FPS native capability)
+- **MCU**: Seeed Studio XIAO ESP32-S3-Sense (8MB Flash, 8MB PSRAM, Wi-Fi, OV2640 Camera Module)
+- **Camera**: OV2640 (2MP, 1/4" sensor, 1632x1232 max res.)
 - **Motor Control**: TB6612FNG H-bridge with flyback protection
 - **Motors**: 2× JGA25-370 300 RPM 12V DC gearmotors
-- **Power**: 3S 650mAh LiPo battery (1 hour runtime)
-- **Thermal Management**: 5V mini fan + active temperature monitoring
+- **Power**: 3S 650mAh LiPo battery (~1 hour runtime)
+- **Thermal Management**: 5V mini fan, heat sink, active temperature monitoring, dynamic framerate
 
 **Software Stack:**
 - **Firmware**: C++ (Arduino framework), PlatformIO
 - **Network**: ESP32 WiFi (Station mode), AsyncTCP WebSocket
 - **Frontend**: HTML5, JavaScript (Nipple.js joystick library)
-- **Build System**: PlatformIO (CMake backend)
+- **Build System**: PlatformIO (VSCode extension + CLI tool)
 
 ---
 
@@ -33,7 +33,7 @@ This section details real problems encountered during development and the engine
 ### Challenge 1: Real-Time Latency on Bandwidth-Constrained Wireless
 
 **The Problem:**
-Video streaming and motor control share a single WiFi link. A naive implementation (sequential processing) would introduce 100-200ms latency between joystick input and motor response—too slow for responsive control. Cellular connections (3G/4G) introduced additional variability.
+Video streaming and motor control share a single WiFi link. A naive implementation (sequential processing) would introduce significant latency between joystick input and motor response—too slow for responsive control. Cellular connections (3G/4G) which needed to be used occasionally introduced additional variability.
 
 **Root Cause Analysis:**
 - OV2640 generates raw frames at ~10 FPS (SVGA: 1024×768)
@@ -73,7 +73,7 @@ void loop() {
 }
 ```
 
-**Impact:** Motor latency reduced to **<50ms** (single WiFi round-trip), independent of video stream quality. Joystick input to motor response is instantaneous even if video frames are dropped.
+**Impact:** Motor latency reduced to **<150ms** (single WiFi round-trip), independent of video stream quality. Joystick input to motor response is instantaneous even if video frames are dropped.
 
 **Key Design Principle:** Asynchronous I/O handlers decouple the blocking operation (WiFi transmission) from the latency-critical operation (motor control). This is fundamental to real-time embedded systems.
 
